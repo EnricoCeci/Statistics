@@ -1,0 +1,1066 @@
+---
+title: "E.Ceci - Analisi Mercato Immobiliare Texas"
+author: "Enrico Ceci"
+date: "2025-09-25"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    number_sections: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  eval = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = "center"
+)
+```
+
+> **Nota di ricostruzione**
+>
+> Questo file `.Rmd` è stato ricostruito a partire dal report PDF pubblicato
+> originariamente su RPubs. Il testo, il codice e l'ordine delle analisi
+> riproducono il documento disponibile. Nel PDF non erano visibili il codice
+> iniziale di importazione del dataset e alcune istruzioni usate per creare
+> dataframe intermedi; tali punti sono segnalati nel codice.
+
+```{r librerie}
+library(dplyr)
+library(ggplot2)
+library(knitr)
+library(moments)
+```
+
+```{r importazione-dati}
+# Il codice originale di importazione non era presente nel PDF.
+# Sostituire il percorso con quello del dataset utilizzato.
+
+# dati <- read.csv("percorso/del/dataset.csv")
+
+# Numero complessivo di osservazioni:
+N <- nrow(dati)
+```
+
+# 1. Analisi delle variabili
+
+**Richiesta:** Identifica e descrivi il tipo di variabili statistiche presenti
+nel dataset. Valuta come gestire le variabili che sottintendono una dimensione
+tempo e commenta sul tipo di analisi che può essere condotta su ciascuna
+variabile.
+
+| Nome variabile | Significato | Tipo di variabile |
+|---|---|---|
+| `city` | città | Variabile qualitativa nominale |
+| `year` | anno di riferimento | Variabile quantitativa ordinale da trattare come qualitativa ordinale |
+| `month` | mese di riferimento | Variabile qualitativa nominale ciclica codificata in numeri |
+| `sales` | numero totale di vendite | Variabile quantitativa discreta |
+| `volume` | valore totale delle vendite in milioni di dollari | Variabile quantitativa continua |
+| `median_price` | prezzo mediano di vendita in dollari | Variabile quantitativa continua |
+| `listings` | numero totale di annunci attivi | Variabile quantitativa discreta |
+| `months_inventory` | mesi necessari per vendere tutte le inserzioni correnti e passate | Variabile quantitativa continua |
+
+Le variabili quantitative continue sono espresse su scala di rapporti.
+
+Per le variabili quantitative si possono condurre le analisi riguardanti gli
+indici di posizione, dispersione e forma. Per le variabili qualitative non si
+possono condurre le stesse analisi, poiché richiedono valori numerici e non
+modalità; fa eccezione l'individuazione della moda, basata sull'analisi delle
+frequenze.
+
+Le variabili `city`, `year` e `month` ricoprono sostanzialmente un ruolo
+equivalente a quello di una variabile identificativa. Non c'è infatti la
+possibilità che la frequenza di una città sia minore di quella delle altre, e
+lo stesso vale per le altre due variabili.
+
+# 2. Indici di posizione, variabilità e forma
+
+**Richiesta:** Calcola gli indici di posizione, variabilità e forma per tutte
+le variabili per le quali ha senso farlo; per le altre crea una distribuzione
+di frequenza.
+
+Alla luce della considerazione esposta nella risposta alla richiesta 1, le
+variabili `city`, `year` e `month` hanno frequenze assolute uguali. La variabile
+che guida la cadenza delle rilevazioni è `month`, perché le rilevazioni sono
+mensili.
+
+Ogni città, quattro in totale, è rilevata per dodici mesi in ciascun anno dal
+2010 al 2014. Il nome di ogni città viene quindi ripetuto per 60 righe:
+
+\[
+12\ \text{mesi} \times 5\ \text{anni} = 60\ \text{righe}
+\]
+
+Di conseguenza, persino la moda diventa un indice irrilevante da calcolare,
+così come l'indice di Gini.
+
+## Indici di posizione
+
+```{r indici-posizione}
+summary(dati)
+```
+
+| Variabile | Minimo | 1° quartile | Mediana | Media | 3° quartile | Massimo |
+|---|---:|---:|---:|---:|---:|---:|
+| `year` | 2010 | 2011 | 2012 | 2012 | 2013 | 2014 |
+| `month` | 1.00 | 3.75 | 6.50 | 6.50 | 9.25 | 12.00 |
+| `sales` | 79.0 | 127.0 | 175.5 | 192.3 | 247.0 | 423.0 |
+| `volume` | 8.166 | 17.660 | 27.062 | 31.005 | 40.893 | 83.547 |
+| `median_price` | 73.800 | 117.300 | 134.500 | 132.665 | 150.050 | 180.000 |
+| `listings` | 743 | 1.026 | 1.618 | 1.738 | 2.056 | 3.296 |
+| `months_inventory` | 3.400 | 7.800 | 8.950 | 9.193 | 10.950 | 14.900 |
+
+## Indici di variabilità e forma
+
+```{r indici-variabilita-forma}
+# Sviluppo la funzione per il calcolo degli indici
+funzione_calcolo_indici <- function(x, nome_var) {
+  c(
+    Variabile = nome_var,
+    Min = min(x),
+    Max = max(x),
+    IQR = IQR(x),
+    Varianza = var(x),
+    Deviazione_std = sd(x),
+    CV = sd(x) / mean(x),
+    Skewness = skewness(x),
+    Kurtosis = kurtosis(x)
+  )
+}
+
+# Seleziono le variabili d'interesse
+vars <- dati[
+  c("sales", "volume", "median_price", "listings", "months_inventory")
+]
+
+# Calcolo gli indici per ogni variabile, ottenendo una lista di vettori
+results_list <- lapply(
+  names(vars),
+  function(n) funzione_calcolo_indici(vars[[n]], n)
+)
+
+# Converto la lista in tabella
+results_tab <- do.call(rbind, results_list)
+
+kable(
+  results_tab,
+  caption = "Indici di variabilità e forma",
+  digits = 2,
+  align = "c",
+  format.args = list(nsmall = 2)
+)
+```
+
+| Variabile | Min | Max | IQR | Varianza | Deviazione standard | CV | Skewness | Kurtosis |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| `sales` | 79 | 423 | 120 | 6.344,30 | 79,65 | 0,414 | 0,718 | 2,687 |
+| `volume` | 8,166 | 83,547 | 23,2335 | 277,27 | 16,65 | 0,537 | 0,885 | 3,177 |
+| `median_price` | 73.800 | 180.000 | 32.750 | 513.572.983,09 | 22.662,15 | 0,171 | -0,365 | 2,377 |
+| `listings` | 743 | 3.296 | 1.029,5 | 566.568,97 | 752,71 | 0,433 | 0,649 | 2,208 |
+| `months_inventory` | 3,4 | 14,9 | 3,15 | 5,31 | 2,30 | 0,251 | 0,041 | 2,826 |
+
+```{r densita-variabili-continue, fig.width=12, fig.height=4}
+# Creazione di un vettore delle variabili continue per i grafici
+continuous_vars <- c("volume", "median_price", "months_inventory")
+
+# Imposto la finestra grafica
+par(mfrow = c(1, 3))
+
+# Ciclo per la creazione dei grafici
+for (var in continuous_vars) {
+  x <- dati[[var]]
+
+  plot(
+    density(x),
+    main = paste("Densità di", var),
+    xlab = var
+  )
+
+  # Asse di simmetria
+  abline(v = mean(x), col = "red")
+}
+```
+
+**Nota:** come detto, l'indice di Gini non ha senso per le variabili `year`,
+`month` e `city`, ma neppure per le variabili quantitative considerate in
+questa sezione. Per queste ultime, i valori osservati non costituiscono le
+modalità qualitative di cui conteggiare la frequenza nella formula del Gini,
+ma sono i valori quantitativi assunti dalle variabili.
+
+# 3. Identificazione delle variabili con maggiore variabilità e asimmetria
+
+**Richiesta:** Qual è la variabile con variabilità più elevata? Come ci sei
+arrivato? E quale quella più asimmetrica?
+
+La variabile con la variabilità più elevata è `volume`. È stata individuata
+confrontando i coefficienti di variazione. Quello di `volume` è pari al
+53,7%, indicando che la deviazione standard rappresenta quasi il 54% della
+media.
+
+La variabile più asimmetrica è ancora `volume`, con un indice di asimmetria
+pari a 0,88. Si tratta di un'asimmetria positiva: sono maggiormente presenti
+valori bassi della variabile e vale quindi la relazione:
+
+\[
+\text{media} > \text{mediana} > \text{moda}
+\]
+
+# 4. Creazione di classi per una variabile quantitativa
+
+## Creazione delle classi
+
+```{r creazione-classi-sales}
+dati$sales_cl <- cut(
+  dati$sales,
+  breaks = c(70, 130, 190, 250, 310, 370, 430)
+)
+```
+
+## Distribuzione di frequenza
+
+```{r frequenze-classi-sales}
+ni <- table(dati$sales_cl)
+fi <- table(dati$sales_cl) / N
+Ni <- cumsum(ni)
+Fi <- Ni / N
+
+kable(
+  cbind(ni, fi, Ni, Fi),
+  caption = "Distribuzione di frequenze",
+  digits = 2,
+  align = "c",
+  format.args = list(nsmall = 2)
+)
+```
+
+| Classe | Frequenza assoluta | Frequenza relativa | Frequenza cumulata | Frequenza relativa cumulata |
+|---|---:|---:|---:|---:|
+| (70, 130] | 67 | 0,28 | 67 | 0,28 |
+| (130, 190] | 72 | 0,30 | 139 | 0,58 |
+| (190, 250] | 42 | 0,17 | 181 | 0,75 |
+| (250, 310] | 36 | 0,15 | 217 | 0,90 |
+| (310, 370] | 17 | 0,07 | 234 | 0,98 |
+| (370, 430] | 6 | 0,03 | 240 | 1,00 |
+
+## Grafico delle classi
+
+```{r grafico-classi-sales}
+ggplot(data = dati) +
+  geom_bar(
+    aes(x = sales_cl),
+    stat = "count",
+    col = "red",
+    fill = "green"
+  ) +
+  labs(
+    title = "Distribuzione delle classi di vendita",
+    x = "N° vendite in classi",
+    y = "Frequenze assolute"
+  ) +
+  scale_y_continuous(breaks = seq(0, 75, 25))
+```
+
+## Calcolo dell'indice di Gini
+
+```{r indice-gini-classi}
+gini.index <- function(x) {
+  ni <- table(x)
+  fi <- ni / length(x)
+  fi2 <- fi^2
+  J <- length(table(x))
+
+  gini <- 1 - sum(fi2)
+  gini.normalizzato <- gini / ((J - 1) / J)
+
+  return(gini.normalizzato)
+}
+
+kable(
+  table(dati$sales_cl),
+  caption = "Distribuzione di frequenze per classi",
+  digits = 2,
+  align = "c",
+  format.args = list(nsmall = 2)
+)
+
+kable(gini.index(dati$sales_cl))
+```
+
+Il risultato è quasi uguale a 1 (`0,9279583`) e indica quindi una condizione
+prossima alla massima eterogeneità.
+
+# 5. Calcolo delle probabilità
+
+**Qual è la probabilità che una riga estratta a caso riporti la città
+“Beaumont”?**
+
+La probabilità è pari al 25%:
+
+\[
+\frac{60}{240} = 0,25
+\]
+
+**Qual è la probabilità che riporti il mese di luglio?**
+
+La probabilità è pari all'8,3%. Ogni città è considerata per cinque anni,
+quindi esistono cinque righe relative a luglio per ognuna delle quattro città:
+
+\[
+\frac{5 \times 4}{240} = \frac{20}{240} \approx 0,083
+\]
+
+**Qual è la probabilità che riporti dicembre 2012?**
+
+La probabilità è pari all'1,7%: dicembre 2012 compare una volta per ciascuna
+delle quattro città.
+
+\[
+\frac{4}{240} \approx 0,017
+\]
+
+# 6. Creazione di nuove variabili
+
+## Prezzo medio
+
+**Richiesta:** Esiste una colonna con il prezzo mediano; creane una che indichi
+invece il prezzo medio utilizzando le altre variabili disponibili.
+
+```{r prezzo-medio}
+dati$mean_price <- dati$volume * 1000000 / dati$sales
+```
+
+## Distribuzione del prezzo medio per città
+
+```{r boxplot-prezzo-medio-citta}
+ggplot(data = dati) +
+  geom_boxplot(
+    aes(x = city, y = mean_price),
+    color = "red",
+    fill = "blue"
+  ) +
+  labs(
+    x = "Città",
+    y = "Prezzo medio",
+    title = "Distribuzione prezzi medi per città"
+  )
+```
+
+```{r media-prezzo-medio-citta}
+# Nel PDF non era visibile l'istruzione originale che creava questo dataframe.
+# La seguente è la ricostruzione coerente con la tabella mostrata.
+
+dati_media_prz_mediXcitta <- dati %>%
+  group_by(city) %>%
+  summarise(
+    media_prezzi_medi = mean(mean_price),
+    .groups = "drop"
+  )
+
+kable(
+  dati_media_prz_mediXcitta,
+  caption = "Prezzo medio per città",
+  digits = 2
+)
+```
+
+| Città | Media dei prezzi medi |
+|---|---:|
+| Beaumont | 146.640,41 |
+| Bryan-College Station | 183.534,29 |
+| Tyler | 167.676,76 |
+| Wichita Falls | 119.430,00 |
+
+```{r grafico-prezzo-medio-citta}
+ggplot(data = dati_media_prz_mediXcitta) +
+  geom_bar(
+    aes(x = city, y = media_prezzi_medi),
+    stat = "identity",
+    col = "red",
+    fill = "blue"
+  ) +
+  labs(
+    title = "Prezzo medio per città",
+    x = "Città",
+    y = "Prezzi"
+  ) +
+  scale_y_continuous(breaks = seq(0, 250000, 50000))
+```
+
+Il prezzo medio più alto è quello di Bryan-College Station, mentre il più
+basso è quello di Wichita Falls.
+
+## Efficacia degli annunci di vendita
+
+Per rappresentare l'efficacia degli annunci è stato calcolato il ritmo
+corrente di vendita, dividendo il numero di annunci attivi (`listings`) per il
+numero di mesi necessari a smaltire l'inventario (`months_inventory`).
+
+Il risultato rappresenta il numero stimato di inserzioni smaltite mensilmente
+e fornisce quindi una misura della velocità di vendita:
+
+\[
+v = \frac{s}{t}
+\]
+
+dove \(s\) corrisponde agli annunci attivi e \(t\) ai mesi di inventario.
+
+```{r velocita-vendita}
+dati$current_sales_speed <- dati$listings / dati$months_inventory
+```
+
+```{r velocita-media-vendita-citta}
+# Nel PDF non era visibile l'istruzione originale che creava la tabella.
+# La seguente ricostruisce il calcolo descritto nel testo.
+
+velocita_media_citta <- dati %>%
+  group_by(city) %>%
+  summarise(
+    media_velocita_vendite = mean(current_sales_speed),
+    .groups = "drop"
+  )
+
+kable(
+  velocita_media_citta,
+  caption = "Velocità media di smaltimento degli annunci per città",
+  digits = 2
+)
+```
+
+| Città | Velocità media di vendita |
+|---|---:|
+| Beaumont | 172,06 |
+| Bryan-College Station | 199,58 |
+| Tyler | 260,98 |
+| Wichita Falls | 116,74 |
+
+Wichita Falls è la città con il ritmo medio di vendita più basso, mentre Tyler
+è quella con il maggior numero di inserzioni smaltite mensilmente.
+
+# 7. Analisi condizionata
+
+**Richiesta:** Usa il pacchetto `dplyr` o il linguaggio base di R per
+effettuare analisi statistiche condizionate per città, anno e mese. Genera dei
+summary, comprendenti media e deviazione standard, e rappresenta graficamente
+i risultati.
+
+Si ricercano media e deviazione standard delle variabili `sales` e `listings`,
+condizionando per `city`, `year` e `month`.
+
+```{r analisi-condizionata}
+# Creo un vettore con le variabili rispetto alle quali condizionare
+variabili <- c("city", "year", "month")
+
+for (v in variabili) {
+  cat("\n\n## Risultati condizionati a:", v, "\n\n")
+
+  # Calcolo media e deviazione standard di vendite e annunci
+  df_summary <- dati %>%
+    group_by(.data[[v]]) %>%
+    summarise(
+      vendite_medie = mean(sales),
+      variabilita_vendite = sd(sales),
+      annunci_medi = mean(listings),
+      variabilita_annunci = sd(listings),
+      .groups = "drop"
+    )
+
+  print(
+    kable(
+      df_summary,
+      caption = paste("Media e deviazione standard condizionate a", v)
+    )
+  )
+
+  # Grafico delle vendite
+  g1 <- ggplot(df_summary) +
+    geom_bar(
+      aes(x = .data[[v]], y = vendite_medie),
+      stat = "identity",
+      fill = "blue",
+      col = "red"
+    ) +
+    geom_errorbar(
+      aes(
+        x = .data[[v]],
+        ymin = vendite_medie - variabilita_vendite,
+        ymax = vendite_medie + variabilita_vendite
+      ),
+      width = 0.2
+    ) +
+    labs(
+      title = paste("N° medio di vendite per", v),
+      x = v,
+      y = "Vendite"
+    )
+
+  print(g1)
+
+  # Grafico degli annunci
+  g2 <- ggplot(df_summary) +
+    geom_bar(
+      aes(x = .data[[v]], y = annunci_medi),
+      stat = "identity",
+      fill = "red",
+      col = "blue"
+    ) +
+    geom_errorbar(
+      aes(
+        x = .data[[v]],
+        ymin = annunci_medi - variabilita_annunci,
+        ymax = annunci_medi + variabilita_annunci
+      ),
+      width = 0.2
+    ) +
+    labs(
+      title = paste("N° medio di annunci per", v),
+      x = v,
+      y = "Annunci"
+    )
+
+  print(g2)
+}
+```
+
+## Risultati condizionati alla città
+
+| Città | Vendite medie | Deviazione standard vendite | Annunci medi | Deviazione standard annunci |
+|---|---:|---:|---:|---:|
+| Beaumont | 177,3833 | 41,48395 | 1.679,3167 | 91,13382 |
+| Bryan-College Station | 205,9667 | 84,98374 | 1.458,1333 | 252,52753 |
+| Tyler | 269,7500 | 61,96380 | 2.905,0500 | 226,75458 |
+| Wichita Falls | 116,0667 | 22,15192 | 909,5833 | 73,75504 |
+
+## Risultati condizionati all'anno
+
+| Anno | Vendite medie | Deviazione standard vendite | Annunci medi | Deviazione standard annunci |
+|---:|---:|---:|---:|---:|
+| 2010 | 168,6667 | 60,53708 | 1.826,000 | 785,0201 |
+| 2011 | 164,1250 | 63,87042 | 1.849,646 | 780,3777 |
+| 2012 | 186,1458 | 70,90509 | 1.776,812 | 738,4492 |
+| 2013 | 211,9167 | 83,99641 | 1.677,604 | 743,5239 |
+| 2014 | 230,6042 | 95,51490 | 1.560,042 | 706,7086 |
+
+## Risultati condizionati al mese
+
+| Mese | Vendite medie | Deviazione standard vendite | Annunci medi | Deviazione standard annunci |
+|---:|---:|---:|---:|---:|
+| 1 | 127,40 | 43,38372 | 1.647,05 | 704,6140 |
+| 2 | 140,85 | 51,06783 | 1.692,50 | 711,2004 |
+| 3 | 189,45 | 59,17812 | 1.756,70 | 727,3546 |
+| 4 | 211,70 | 65,40489 | 1.825,70 | 770,4287 |
+| 5 | 238,85 | 83,11582 | 1.823,85 | 790,2234 |
+| 6 | 243,55 | 94,99832 | 1.833,25 | 811,6288 |
+| 7 | 235,75 | 96,27421 | 1.821,20 | 826,7196 |
+| 8 | 231,45 | 79,22883 | 1.786,30 | 815,8664 |
+| 9 | 182,35 | 72,51807 | 1.748,90 | 802,6563 |
+| 10 | 179,90 | 74,95395 | 1.710,35 | 779,1649 |
+| 11 | 156,85 | 55,46670 | 1.652,70 | 741,2533 |
+| 12 | 169,40 | 60,74658 | 1.557,75 | 692,5678 |
+
+I grafici ottenuti dal condizionamento per città suggeriscono una correlazione
+positiva fra il numero medio di annunci attivi e il numero medio di vendite,
+con l'unica eccezione di Bryan-College Station. Tyler è la città con il maggior
+numero medio di annunci e di vendite, mentre Wichita Falls presenta i valori
+più bassi per entrambe le variabili.
+
+Nel condizionamento per anno, i grafici mostrano una correlazione negativa: ai
+primi due anni di crescita del numero medio di annunci corrisponde una
+diminuzione del numero medio di vendite; nei tre anni successivi, alla
+diminuzione degli annunci medi corrisponde una crescita delle vendite medie.
+
+Rispetto ai mesi emerge invece una correlazione positiva: all'aumento degli
+annunci corrisponde un aumento delle vendite e alla loro diminuzione
+corrisponde una riduzione delle vendite.
+
+# 8. Creazione di visualizzazioni con `ggplot2`
+
+## Prezzo mediano per città e anno
+
+**Richiesta:** utilizzare un boxplot per confrontare la distribuzione del
+prezzo mediano tra le città.
+
+```{r boxplot-prezzo-mediano}
+ggplot(data = dati) +
+  geom_boxplot(
+    aes(
+      x = factor(year),
+      y = median_price,
+      fill = city
+    )
+  ) +
+  labs(
+    x = "Anno",
+    y = "Prezzo mediano",
+    title = "Prezzo mediano per città 2010-2014"
+  )
+```
+
+Wichita Falls presenta prezzi mediani inferiori e un andamento stabile nel
+tempo. Bryan-College Station mostra invece i prezzi mediani più elevati e un
+trend crescente molto evidente nel quinquennio.
+
+In termini di variabilità, Bryan-College Station è la città più stabile: sia
+il box sia la lunghezza dei baffi indicano scarsa variabilità. Wichita Falls è
+invece quella che mediamente mostra box più grandi e baffi più lunghi.
+
+Nel complesso, Beaumont, Tyler e Bryan-College Station mostrano, con alcune
+differenze, lo stesso andamento nel tempo su livelli e con intensità diverse.
+Wichita Falls presenta un trend più stabile e al livello più basso. Il grafico
+è coerente con quello della distribuzione dei prezzi medi per città della
+richiesta 6.
+
+## Volume totale delle vendite per mese e città
+
+```{r volume-totale-mese-citta}
+# Creo un vettore con le variabili d'interesse
+variabili <- c("month", "city")
+
+for (v in variabili) {
+  df_summary <- dati %>%
+    group_by(.data[[v]]) %>%
+    summarise(
+      volume_totale = sum(volume),
+      .groups = "drop"
+    )
+
+  kable(
+    df_summary,
+    caption = paste("Volume totale per", v)
+  )
+
+  # Grafico del volume totale delle vendite
+  print(
+    ggplot(df_summary) +
+      geom_col(
+        aes(x = .data[[v]], y = volume_totale),
+        col = "red",
+        fill = "blue"
+      ) +
+      labs(
+        title = paste("Volume (in mln $)", v),
+        x = v,
+        y = "Volume totale"
+      )
+  )
+}
+```
+
+Il grafico condizionato ai mesi rispecchia l'andamento del numero medio di
+vendite della richiesta 7, calcolato rispetto alla stessa variabile, e mostra
+picchi del volume delle vendite fra marzo e agosto.
+
+La città con il volume totale delle vendite più elevato è Tyler, mentre quella
+con il volume più basso è Wichita Falls. Anche questo grafico è coerente con
+quello del numero medio di vendite della richiesta 7.
+
+## Line chart complessiva delle vendite annuali
+
+```{r dati-vendite-annuali}
+# Nel PDF non era visibile il codice che creava dati_salesXyear.
+# La seguente istruzione ricostruisce il riepilogo descritto.
+
+dati_salesXyear <- dati %>%
+  group_by(year) %>%
+  summarise(
+    yearly_sales = sum(sales),
+    .groups = "drop"
+  )
+```
+
+```{r line-chart-vendite-annuali}
+ggplot(data = dati_salesXyear) +
+  geom_line(
+    aes(x = year, y = yearly_sales),
+    col = "red",
+    lwd = 1
+  ) +
+  geom_point(
+    aes(x = year, y = yearly_sales),
+    col = "blue"
+  ) +
+  labs(
+    x = "Anni",
+    y = "Vendite",
+    title = "Vendite annuali totali"
+  ) +
+  geom_text(
+    aes(
+      x = year,
+      y = yearly_sales + 250,
+      label = yearly_sales
+    )
+  )
+```
+
+Il grafico mostra lo stesso andamento riscontrato nel grafico a barre relativo
+al numero medio di vendite annuali della richiesta 7: si osserva una
+diminuzione dal 2010 al 2011 e una crescita negli anni successivi.
+
+## Line chart disaggregata per città
+
+```{r line-chart-vendite-citta}
+dati$date <- as.Date(
+  paste(dati$year, dati$month, "01", sep = "-")
+)
+
+ggplot(data = dati) +
+  geom_line(
+    aes(x = date, y = sales, col = city),
+    lwd = 1
+  ) +
+  geom_point(
+    aes(x = date, y = sales),
+    col = "blue"
+  ) +
+  labs(
+    x = "Anni",
+    y = "Vendite",
+    title = "Vendite annuali per città"
+  ) +
+  scale_x_date(
+    date_breaks = "1 year",
+    date_labels = "%Y"
+  )
+```
+
+Il grafico evidenzia un trend crescente per tutte le città, eccetto Wichita
+Falls, che mostra un andamento stagnante. Tyler presenta il maggior numero di
+vendite e supera Bryan-College Station nonostante prezzi medi e mediani
+inferiori.
+
+# 10. Osservazioni operative
+
+> Nel documento originale questa sezione precede le conclusioni, nonostante la
+> numerazione riporti il numero 10 prima del numero 9.
+
+## Volume delle vendite per città
+
+```{r boxplot-volume-citta}
+ggplot(data = dati) +
+  geom_boxplot(
+    aes(x = city, y = volume),
+    color = "red",
+    fill = "blue"
+  ) +
+  labs(
+    x = "Città",
+    y = "Volume (in mln $)",
+    title = "Volume di vendita per città"
+  )
+```
+
+Il grafico mostra la massima asimmetria per Bryan-College Station.
+
+Per Beaumont e Wichita Falls la posizione rimane la stessa rispetto al
+boxplot dei prezzi mediani; per Bryan-College Station e Tyler, invece, la
+posizione si inverte.
+
+L'andamento del boxplot ricalca quello del numero totale e del numero medio di
+vendite per città. Wichita Falls e Beaumont mostrano quindi i volumi di
+vendita più bassi.
+
+Per Tyler, il prezzo mediano inferiore rispetto a Bryan-College Station è più
+che compensato dal maggior numero di vendite, che porta la città ad avere un
+volume mediano superiore.
+
+Bryan-College Station mostra la maggiore asimmetria e la maggiore variabilità,
+con box di dimensioni maggiori e baffi più lunghi.
+
+## Volume delle vendite per anno
+
+```{r boxplot-volume-anno}
+ggplot(data = dati) +
+  geom_boxplot(
+    aes(
+      x = factor(year),
+      y = volume,
+      group = year
+    ),
+    color = "red",
+    fill = "blue"
+  ) +
+  labs(
+    x = "Year",
+    y = "Volume (in mln $)",
+    title = "Volume di vendita per anno"
+  )
+```
+
+L'andamento del grafico è coerente con quello della line chart complessiva
+della richiesta 8.
+
+## Vendite mensili per città: barre sovrapposte
+
+```{r dati-vendite-mensili-citta}
+# Nel PDF non era visibile il codice che creava questo dataframe.
+# La seguente istruzione ricostruisce il riepilogo indicato nel testo.
+
+dati_vendite_totali_meseXcittà <- dati %>%
+  group_by(month, city) %>%
+  summarise(
+    vendite_totali_mensile = sum(sales),
+    .groups = "drop"
+  )
+```
+
+```{r barre-sovrapposte-vendite}
+ggplot(data = dati_vendite_totali_meseXcittà) +
+  geom_col(
+    aes(
+      x = month,
+      y = vendite_totali_mensile,
+      fill = city
+    ),
+    position = "stack",
+    color = "black"
+  ) +
+  labs(
+    x = "Mese",
+    y = "Vendite",
+    title = "Vendite mensili per città"
+  ) +
+  scale_y_continuous(breaks = seq(0, 5000, 1000)) +
+  scale_x_continuous(breaks = seq(0, 12, 1))
+```
+
+La porzione mensile di ogni città è ottenuta sommando le vendite registrate
+nello stesso mese trasversalmente ai cinque anni del dataset. Ad esempio, la
+porzione di Wichita Falls relativa a gennaio è costituita dalla somma delle
+vendite di tutti i mesi di gennaio dal 2010 al 2014.
+
+Per Tyler e soprattutto per Bryan-College Station, i mesi centrali dell'anno,
+da marzo ad agosto, sono quelli in cui si effettuano più vendite. Per Beaumont
+e Wichita Falls, il livello delle vendite rimane invece abbastanza stabile
+nel corso dell'anno.
+
+## Versione normalizzata
+
+```{r barre-normalizzate-vendite}
+ggplot(data = dati_vendite_totali_meseXcittà) +
+  geom_col(
+    aes(
+      x = month,
+      y = vendite_totali_mensile,
+      fill = city
+    ),
+    position = "fill",
+    color = "black"
+  ) +
+  labs(
+    x = "Mese",
+    y = "Quota di vendite",
+    title = "Vendite totali mensili normalizzate per città"
+  ) +
+  scale_y_continuous(breaks = seq(0, 1, 0.1)) +
+  scale_x_continuous(breaks = seq(0, 12, 1))
+```
+
+## Visualizzazione separata per città
+
+Nel PDF questo grafico è descritto come una versione con inserimento della
+variabile `year`, ma il codice visibile applica in realtà un `facet_wrap()` per
+`city`.
+
+```{r vendite-mensili-facet-citta}
+ggplot(data = dati_vendite_totali_meseXcittà) +
+  geom_col(
+    aes(
+      x = month,
+      y = vendite_totali_mensile,
+      fill = city
+    ),
+    position = "stack"
+  ) +
+  labs(
+    x = "Mese",
+    y = "Vendite",
+    title = "Vendite totali mensili per ogni città"
+  ) +
+  scale_y_continuous(breaks = seq(0, 2000, 500)) +
+  scale_x_continuous(breaks = seq(0, 12, 1)) +
+  facet_wrap(~ city)
+```
+
+In questo grafico è ancora più evidente quanto mostrato nel primo grafico
+della sezione. Il trend è meno marcato per Tyler, che registra un numero di
+vendite elevato anche nei mesi successivi ad agosto. È meno marcato anche per
+le città meno performanti, pur rimanendo presente; in particolare, è più
+evidente per Beaumont che per Wichita Falls.
+
+## Line chart delle vendite annuali per città
+
+**Variabile scelta:** `sales`.
+
+```{r dati-line-chart-manuale}
+# Nel documento si specifica che questo dataframe fu costruito
+# "artigianalmente". Il codice originale di costruzione non era visibile.
+#
+# Una ricostruzione equivalente e più compatta può essere realizzata con
+# tidyr::pivot_wider(), ma qui si mantiene il nome dell'oggetto originale.
+
+# library(tidyr)
+#
+# datixlineachart <- dati %>%
+#   group_by(year, city) %>%
+#   summarise(vendite = sum(sales), .groups = "drop") %>%
+#   pivot_wider(names_from = city, values_from = vendite) %>%
+#   rename(
+#     Anno = year,
+#     Bryan_College_Station = `Bryan-College Station`,
+#     Wichita_Falls = `Wichita Falls`
+#   )
+```
+
+```{r line-chart-manuale-citta}
+ggplot(data = datixlineachart) +
+  geom_line(
+    aes(x = Anno, y = Beaumont, col = "Beaumont"),
+    lwd = 1
+  ) +
+  geom_line(
+    aes(
+      x = Anno,
+      y = Bryan_College_Station,
+      col = "Bryan_College_Station"
+    ),
+    lwd = 1
+  ) +
+  geom_line(
+    aes(x = Anno, y = Tyler, col = "Tyler"),
+    lwd = 1
+  ) +
+  geom_line(
+    aes(x = Anno, y = Wichita_Falls, col = "Wichita_Falls"),
+    lwd = 1
+  ) +
+  geom_point(
+    aes(x = Anno, y = Beaumont),
+    col = "green4",
+    size = 3
+  ) +
+  geom_point(
+    aes(x = Anno, y = Bryan_College_Station),
+    col = "purple",
+    size = 3
+  ) +
+  geom_point(
+    aes(x = Anno, y = Tyler),
+    col = "red3",
+    size = 3
+  ) +
+  geom_point(
+    aes(x = Anno, y = Wichita_Falls),
+    col = "blue4",
+    size = 3
+  ) +
+  labs(
+    x = "Anni",
+    y = "Vendite",
+    title = "Vendite per città"
+  ) +
+  scale_color_manual(
+    name = "Città",
+    breaks = c(
+      "Beaumont",
+      "Bryan_College_Station",
+      "Tyler",
+      "Wichita_Falls"
+    ),
+    values = c("green4", "purple", "red3", "blue4"),
+    labels = c(
+      "Beaumont",
+      "Bryan_College_Station",
+      "Tyler",
+      "Wichita_Falls"
+    )
+  ) +
+  geom_text(
+    aes(x = Anno, y = Beaumont - 125, label = Beaumont)
+  ) +
+  geom_text(
+    aes(
+      x = Anno,
+      y = Bryan_College_Station + 150,
+      label = Bryan_College_Station
+    )
+  ) +
+  geom_text(
+    aes(x = Anno, y = Tyler + 150, label = Tyler)
+  ) +
+  geom_text(
+    aes(
+      x = Anno,
+      y = Wichita_Falls + 125,
+      label = Wichita_Falls
+    )
+  )
+```
+
+**Nota:** poiché con il semplice condizionamento non si riusciva a ottenere un
+dataset che permettesse di organizzare il grafico con la struttura richiesta,
+è stato creato un dataframe in maniera “artigianale”, in modo da avere gli
+anni sull'asse X, le vendite sull'asse Y e una linea per ogni città.
+
+# 9. Conclusioni
+
+> Le conclusioni sono state collocate dopo la sezione “Osservazioni
+> operative”, così da poterle completare dopo la realizzazione di tutti i
+> grafici e disporre di una visione complessiva dei risultati.
+
+Il mercato immobiliare del Texas può essere analizzato secondo due dimensioni:
+una dimensione temporale, relativa all'andamento nel corso degli anni e
+all'interno dell'anno, e una dimensione spaziale, relativa al confronto tra le
+città.
+
+## Dimensione temporale
+
+Le line chart, sia quella complessiva sia quella disaggregata per città, il
+grafico del numero medio di vendite condizionato all'anno e il boxplot del
+volume totale delle vendite mostrano una diminuzione del giro d'affari fra il
+2010 e il 2011. Se il dataset è reale, ciò potrebbe essere una conseguenza
+della crisi del 2008, i cui effetti potevano essere ancora presenti. Dal 2012
+in poi emerge invece una crescita.
+
+I mesi centrali dell'anno, da aprile ad agosto, sono quelli in cui il giro
+d'affari è più intenso, come mostrano i grafici del numero e del volume delle
+vendite. Disaggregando per città, per Tyler e soprattutto per Bryan-College
+Station il periodo da marzo ad agosto è quello con più vendite.
+
+Per Tyler, anche nei mesi successivi ad agosto il numero di vendite rimane
+elevato. Questo andamento è meno marcato per le città meno performanti, ma
+rimane presente; in particolare, è più evidente per Beaumont che per Wichita
+Falls.
+
+## Dimensione spaziale
+
+Tyler è la città che registra:
+
+- il numero totale e medio di vendite più elevato;
+- il tasso di smaltimento mensile degli annunci più alto;
+- il volume delle vendite più elevato;
+- il secondo prezzo mediano e il secondo prezzo medio, dopo Bryan-College
+  Station.
+
+Tyler sembrerebbe essere una zona più estesa rispetto alle altre, considerando
+il numero medio di annunci attivi, e leggermente meno esclusiva di
+Bryan-College Station, dato il prezzo mediano più basso. Il maggior numero di
+vendite, dovuto non soltanto a un maggior numero di annunci ma anche a un ritmo
+di vendita superiore, compensa ampiamente il prezzo mediano e medio inferiore.
+
+Bryan-College Station presenta:
+
+- il terzo numero medio di annunci attivi;
+- il secondo numero totale e medio di vendite;
+- il secondo ritmo di smaltimento più alto;
+- il prezzo mediano e medio più alto.
+
+Questi risultati suggeriscono che Bryan-College Station possa essere una zona
+meno estesa, dato il terzo valore medio di annunci attivi, e più esclusiva,
+considerando i prezzi mediani e medi più elevati.
+
+Wichita Falls e Beaumont risultano le città meno performanti sotto tutti i
+punti di vista. Beaumont condivide con Tyler e Bryan-College Station gli stessi
+andamenti di vendite, volumi e prezzi medi e mediani, ma su un livello
+inferiore.
