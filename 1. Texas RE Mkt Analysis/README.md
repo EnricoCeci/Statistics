@@ -8,21 +8,12 @@ This project consists of a descriptive statistical analysis developed in R to ex
 
 The analysis combines descriptive statistics, probability calculations, derived indicators, conditional analysis and data visualisation to investigate market behaviour across cities, years and months.
 
-The project allows users to:
+The project focuses on:
 
-- identify and classify the statistical variables contained in the dataset;
-- calculate and interpret measures of location, variability and distribution shape;
-- identify the variables with the highest relative variability and skewness;
-- group a quantitative variable into classes and analyse its frequency distribution;
-- calculate the Gini heterogeneity index for the grouped variable;
-- answer probability questions based on the structure of the dataset;
-- derive the mean property price from total sales volume and number of sales;
-- create an indicator of listing effectiveness based on the estimated monthly listing clearance rate;
-- perform conditional analyses by city, year and month;
-- compare mean sales and active listings together with their standard deviations;
-- analyse median prices and total sales volumes using boxplots;
-- investigate seasonal and historical sales patterns through bar charts and line charts;
-- compare the four cities and summarise the main temporal and spatial market patterns.
+- descriptive statistical analysis of the dataset, including variable classification, measures of location, variability, shape and frequency distributions;
+- derivation and evaluation of additional indicators, including mean property price, listing effectiveness and selected probability measures;
+- conditional analyses by city, year and month using summary statistics;
+- visual interpretation of temporal and spatial market patterns through boxplots, bar charts and line charts.
 
 The project was developed following a predefined statistical analysis specification, with particular attention to the interpretation of results rather than to programming complexity.
 
@@ -156,11 +147,11 @@ The project includes the following stages:
 ## Project Structure
 
 ```text
-texas-real-estate-market-analysis/
+1. Texas RE Mkt Analysis/
 │
 ├── README.md
 ├── .gitignore
-└── Texas_Real_Estate_Market_Analysis_EN.ipynb
+└── Texas_Real_Estate_Market_Analysis.ipynb
 ```
 
 The dataset is not stored in the repository because it is downloaded directly from Google Drive by the notebook.
@@ -178,12 +169,14 @@ The descriptive analysis shows that:
 - The probability that a randomly selected observation refers to July is approximately **8.3%**.
 - The probability that a randomly selected observation refers to December 2012 is approximately **1.7%**.
 
+
 The derived price analysis shows that:
 
 - Bryan-College Station has the highest average property price, approximately **$183,534**.
 - Tyler follows with an average price of approximately **$167,677**.
 - Beaumont has an average price of approximately **$146,640**.
 - Wichita Falls has the lowest average price, approximately **$119,430**.
+
 
 The listing effectiveness indicator shows that the average estimated monthly listing clearance rate is:
 
@@ -194,6 +187,7 @@ The listing effectiveness indicator shows that the average estimated monthly lis
 
 Tyler therefore records the highest average listing clearance rate, while Wichita Falls records the lowest.
 
+
 The conditional analysis shows that:
 
 - Tyler has the highest average number of both sales and active listings.
@@ -201,6 +195,7 @@ The conditional analysis shows that:
 - Across cities, average listings and average sales generally move in the same direction, with Bryan-College Station as the main exception.
 - Across years, the average number of sales decreases from 2010 to 2011 and then increases from 2012 onward.
 - Across months, sales activity is generally stronger during the central part of the year.
+
 
 The visual analysis further indicates that:
 
@@ -210,6 +205,7 @@ The visual analysis further indicates that:
 - Tyler maintains relatively high sales levels even after August.
 - Wichita Falls shows a comparatively stable but lower level of activity over time.
 - Beaumont generally follows market patterns similar to Tyler and Bryan-College Station, but at a lower level.
+
 
 Overall, the analysis suggests two main dimensions of the Texas real estate market:
 
